@@ -1,5 +1,7 @@
-﻿using System.Reflection.Emit;
+﻿using System.Diagnostics.Metrics;
+using System.Reflection.Emit;
 using Microsoft.Extensions.Hosting;
+using Microsoft.VisualBasic;
 using Prometheus;
 
 
@@ -9,10 +11,17 @@ public class ServicebusPrometheusExporter : IHostedService, IDisposable
 {
     private readonly Dictionary<string, Counter> _counters = new();
     private readonly Dictionary<string, Histogram> _histograms = new();
-
+    private static readonly HashSet<string> _instrumentations =
+    [
+        ServiceBusMeter.ServiceBusMessageSent,
+        ServiceBusMeter.ServiceBusMessageReceived,
+        ServiceBusMeter.ServiceBusMessageDeliveryCount,
+        ServiceBusMeter.ServiceBusMessageQueueLatency
+    ];
+    private MeterListener _listener;
     public void Dispose()
     {
-        throw new NotImplementedException();
+
     }
     private static readonly string[] LabelNames = ["clientType", "resourceId", "payloadTypeId"];
 
@@ -22,7 +31,27 @@ public class ServicebusPrometheusExporter : IHostedService, IDisposable
         CreateCounter(ServiceBusMeter.ServiceBusMessageReceived, LabelNames);
         CreateHistogram(ServiceBusMeter.ServiceBusMessageDeliveryCount, LabelNames);
         CreateHistogram(ServiceBusMeter.ServiceBusMessageQueueLatency, LabelNames);
+        
+        // TODO: hook up EventListener here
+        return Task.CompletedTask;
 
+    }
+    private static (string[] labels, string?[] labelValues) ExtractLabels(
+        ReadOnlySpan<KeyValuePair<string, object?>> tags)
+    {
+        var values = new string[LabelNames.Length];
+        for (var i = 0; i < LabelNames.Length; i++)
+        {
+            values[i] = "";
+            foreach (var tag in tags)
+            {
+                if (tag.Key != LabelNames[i] || tag.Value is null)
+                    continue;
+                values[i] = tag.Value?.ToString();
+                break;
+            }
+        }
+        return (LabelNames, values);
     }
 
 

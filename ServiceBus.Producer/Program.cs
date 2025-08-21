@@ -1,3 +1,4 @@
+using Azure.Messaging.ServiceBus;
 using Prometheus;
 using Saunter;
 using ServiceBus.Prometheus;
@@ -12,10 +13,24 @@ public class Program
 
         // Load connection string safely (from user-secrets or env var)
         var connectionString = builder.Configuration["ServiceBus:ConnectionString"];
+        var queueName = builder.Configuration["ServiceBus:QueueName"];
 
         // Register services
+        builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
+        builder.Services.AddAuthorization();
+        builder.Services.AddControllers();
         builder.Services.AddHostedService<ServicebusPrometheusExporter>();
+
+        // Reg ServiceBusClient
+        builder.Services.AddSingleton(new ServiceBusClient(connectionString));
+        // Reg SeriviceBusSender
+        builder.Services.AddSingleton(sp =>
+        {
+            var client = sp.GetRequiredService<ServiceBusClient>();
+            return client.CreateSender(queueName);
+        });
+
 
         // AsyncAPI support (optional, only if you need it)
         builder.Services.AddAsyncApiSchemaGeneration(options =>
