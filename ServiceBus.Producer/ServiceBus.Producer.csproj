@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
     <ProjectReference Include="..\ServiceBus.Contracts\ServiceBus.Contracts.csproj" />
@@ -17,6 +17,7 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>129a9aaf-15e1-4849-87d2-a76a6e416a87</UserSecretsId>
   </PropertyGroup>
 
 </Project>
