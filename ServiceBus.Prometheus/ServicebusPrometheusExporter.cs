@@ -31,8 +31,55 @@ public class ServicebusPrometheusExporter : IHostedService, IDisposable
         CreateCounter(ServiceBusMeter.ServiceBusMessageReceived, LabelNames);
         CreateHistogram(ServiceBusMeter.ServiceBusMessageDeliveryCount, LabelNames);
         CreateHistogram(ServiceBusMeter.ServiceBusMessageQueueLatency, LabelNames);
+
+        // Create a listener for OpenTelemetry metrics
+        _listener = new MeterListener
+        {
+            InstrumentPublished = (instrument, listener) =>
+            {
+                if (instrument.Meter.Name == "ServiceBus" &&
+                    _instrumentations.Contains(instrument.Name))
+                {
+                    listener.EnableMeasurementEvents(instrument);
+                }
+            },
+            MeasurementsCompleted = (instrument, state) => { }
+        };
+
+        // When a measurement is recorded, map it to Prometheus
+        _listener.SetMeasurementEventCallback<double>((instrument, measurement, tags, state) =>
+        {
+            var (labels, values) = ExtractLabels(tags);
+            if (_counters.TryGetValue(instrument.Name, out var counter))
+            {
+                counter.WithLabels(values).Inc(measurement);
+            }
+            else if (_histograms.TryGetValue(instrument.Name, out var histogram))
+            {
+                histogram.WithLabels(values).Observe(measurement);
+            }
+        });
+        _listener.SetMeasurementEventCallback<int>((instrument, measurement, tags, state) =>
+        {
+            if (_counters.TryGetValue(instrument.Name, out var counter))
+            {
+                var (labelKeys, labelValues) = ExtractLabels(tags);
+                counter.WithLabels(labelValues).Inc(measurement);
+            }
+        });
+
+        _listener.SetMeasurementEventCallback<double>((instrument, measurement, tags, state) =>
+        {
+            if (_histograms.TryGetValue(instrument.Name, out var histogram))
+            {
+                var (labelKeys, labelValues) = ExtractLabels(tags);
+                histogram.WithLabels(labelValues).Observe(measurement);
+            }
+        });
+
+        _listener.Start();
+
         
-        // TODO: hook up EventListener here
         return Task.CompletedTask;
 
     }

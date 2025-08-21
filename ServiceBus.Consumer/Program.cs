@@ -11,16 +11,8 @@ public class Program
 
         var connectionString = builder.Configuration["ServiceBus:ConnectionString"];
         var queueName = builder.Configuration["ServiceBus:QueueName"];
-        if (string.IsNullOrEmpty(connectionString))
-            throw new InvalidOperationException("ServiceBus:ConnectionString is not configured.");
 
-        if (string.IsNullOrEmpty(queueName))
-            throw new InvalidOperationException("ServiceBus:QueueName is not configured.");
-
-        // Register ServiceBusClient
         builder.Services.AddSingleton(new ServiceBusClient(connectionString));
-
-        // Register ServiceBusProcessor
         builder.Services.AddSingleton(sp =>
         {
             var client = sp.GetRequiredService<ServiceBusClient>();
@@ -29,10 +21,8 @@ public class Program
                 AutoCompleteMessages = false
             });
         });
-        // Hosted service to listen to messages
-        builder.Services.AddHostedService<ServiceBusConsumerWorker>();
 
-        // Prometheus metrics
+        builder.Services.AddHostedService<ServiceBusConsumerWorker>();
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
 
@@ -40,13 +30,10 @@ public class Program
 
         app.UseMetricServer();
         app.UseHttpMetrics();
-
         app.UseSwagger();
         app.UseSwaggerUI();
 
-        app.MapGet("/", () => "Service Bus Consumer running...");
-        
+        app.MapGet("/", () => "Consumer running...");
         app.Run();
-
     }
 }

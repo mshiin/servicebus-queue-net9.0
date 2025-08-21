@@ -4,12 +4,17 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Azure.Messaging.ServiceBus;
+using Prometheus;
 
 namespace ServiceBus.Consumer
 {
     public class ServiceBusConsumerWorker : IHostedService
     {
         private readonly ServiceBusProcessor _processor;
+        private static readonly Counter MessagesReceived = Metrics.CreateCounter(
+            "servicebus_messages_received",
+            "Number of messages received from Service Bus"
+        );
 
         public ServiceBusConsumerWorker(ServiceBusProcessor processor)
         {
@@ -31,6 +36,8 @@ namespace ServiceBus.Consumer
             Console.WriteLine($"Received message: {body}");
 
             await args.CompleteMessageAsync(args.Message);
+            MessagesReceived.Inc();
+            
         }
         private async Task ErrorHandler(ProcessErrorEventArgs args)
         {
